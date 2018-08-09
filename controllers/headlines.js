@@ -1,25 +1,38 @@
-var mongoose = require("mongoose");
+var scrape = require("../scripts/scrape");
+var makeDate = require("../scripts/date");
 
-var Schema = mongoose.Schema;
+var Headline = require("../models/Headline");
 
-var headlineSchema = new Schema ({
-    headline: {
-        type: String,
-        required: true,
-        unqiue: true,
+module.exports = {
+    fetch: function (cb) {
+        scrape(function (data) {
+            var articles = data;
+            for (var i = 0; i < articles.length; i++) {
+                articles[i].date = makeDate();
+                articles[i].saved = false;
+            }
+
+            Headline.collection.insertMany(articles, { ordered: false }, function (err, docs){
+                cb(err, docs);
+            });
+        });
     },
-    summary: {
-        type: String,
-        required: true,
+    delete: function (query, cb){
+        Headline.remove(query,cb);
     },
-    date: String,
-    
-    saved:{
-        type: Boolean,
-        default: false,
+
+    get: function(query, cb){
+        Headline.find(query)
+        .sort({
+            _id: -1
+        })
+        .exec(function (err,doc) {
+            cb(doc);
+        }); 
+    },
+    update: function(query, cb){
+        Headline.update({_id: query._id}, {
+            $set: query
+        }, {}, cb);
     }
-});
-
-var Headline = mongoose.model("Headline", headlineSchema);
-
-module.exports = Headline
+}
